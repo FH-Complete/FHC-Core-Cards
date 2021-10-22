@@ -1,0 +1,8 @@
+{
+	"name": "FHC-Core-Cards",
+	"description": "Kartenterminal",
+	"version": "1",
+	"license": "GPL",
+	"url": "https://github.com/FH-Complete/FHC-Core-Cards",
+	"core_version": "3.3"
+}
