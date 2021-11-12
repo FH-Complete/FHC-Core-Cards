@@ -93,7 +93,7 @@ class Cards extends Auth_Controller
 	{
 		$student = $this->_ci->StudentModel->loadWhere(array('student_uid' => $this->_uid));
 
-		/*if (!hasData($student))
+		if (!hasData($student))
 			$this->terminateWithJsonError('Der Student kann nicht geladen werden.');
 
 		$studiengang = $this->_ci->StudiengangModel->loadWhere(array('studiengang_kz' => getData($student)[0]->studiengang_kz));
@@ -104,7 +104,7 @@ class Cards extends Auth_Controller
 		$studiengangTyp = getData($studiengang)[0]->typ;
 
 		if ($studiengangTyp !== 'm' && $studiengangTyp !== 'b')
-			$this->terminateWithJsonError('Sie sind nicht berechtigt.');*/
+			$this->terminateWithJsonError('Sie sind nicht berechtigt.');
 
 		$person = $this->_ci->PersonModel->getByUid($this->_uid);
 
