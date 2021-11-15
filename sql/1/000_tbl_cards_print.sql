@@ -12,7 +12,7 @@ DO $$
     EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
-CREATE UNIQUE index tbl_cards_print_zugangscode_uindex ON extension.tbl_cards_print (zugangscode);
+CREATE UNIQUE INDEX IF NOT EXISTS tbl_cards_print_zugangscode_uindex ON extension.tbl_cards_print (zugangscode);
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE extension.tbl_cards_print TO vilesci;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE extension.tbl_cards_print TO web;
