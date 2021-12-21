@@ -176,8 +176,8 @@ class Cards extends API_Controller
 
 		if (!hasData($person))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Die Person kann nicht geladen werden. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_NOT_FOUND);
-		$person = getData($person)[0];
 
+		$person = getData($person)[0];
 
 		$insert = $this->_ci->BetriebsmittelModel->insert(
 			array(
@@ -191,7 +191,6 @@ class Cards extends API_Controller
 				'reservieren' => false
 			)
 		);
-		$this->_ci->response(array($insert));
 
 		if (isError($insert))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Speichern des Betriebsmittels. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_NOT_FOUND);
