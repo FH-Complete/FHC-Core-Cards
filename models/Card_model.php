@@ -1,6 +1,5 @@
 <?php
 
-
 class Card_model extends DB_Model
 {
 

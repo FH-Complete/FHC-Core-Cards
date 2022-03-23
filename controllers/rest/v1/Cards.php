@@ -9,6 +9,9 @@ class Cards extends API_Controller
 
 	private $_uid;
 
+	const MITARBEITER = 'mitarbeiter';
+	const STUDENT = 'student';
+
 	/**
 	 * Person API constructor.
 	 */
@@ -25,11 +28,17 @@ class Cards extends API_Controller
 		$this->_ci->load->model('ressource/Betriebsmittelperson_model', 'BetriebsmittelpersonModel');
 		$this->_ci->load->model('ressource/Betriebsmittel_model', 'BetriebsmittelModel');
 		$this->_ci->load->model('person/Benutzer_model', 'BenutzerModel');
+		$this->_ci->load->model('person/Benutzerfunktion_model', 'BenutzerfunktionModel');
 		$this->_ci->load->model('person/Person_model', 'PersonModel');
+		$this->_ci->load->model('ressource/Mitarbeiter_model', 'MitarbeiterModel');
 		$this->_ci->load->model('crm/Konto_model', 'KontoModel');
 		$this->_ci->load->model('crm/Akte_model', 'AkteModel');
+		$this->_ci->load->model('crm/Student_model', 'StudentModel');
 		$this->_ci->load->model('extensions/FHC-Core-Cards/Card_model', 'CardModel');
+		$this->_ci->load->model('extensions/FHC-Core-Cards/Terminal_model', 'TerminalModel');
 		$this->_ci->load->model('person/Fotostatusperson_model', 'FotostatusPersonModel');
+		$this->_ci->load->model('organisation/Organisationseinheit_model', 'OrganisationseinheitModel');
+		$this->_ci->load->model('organisation/Studiensemester_model', 'StudiensemesterModel');
 
 		$this->_ci->load->helper('hlp_authentication');
 		$this->_ci->load->helper('extensions/FHC-Core-Cards/hlp_cards_common');
@@ -83,10 +92,17 @@ class Cards extends API_Controller
 	{
 		$hash = $this->_ci->get('hash');
 		$pin = $this->_ci->get('pin');
-		$type = $this->_ci->get('type');
+		$terminalName = $this->_ci->get('terminal');
 
-		if (is_null($hash) || is_null($pin) || is_null($type))
+		if (is_null($hash) || is_null($pin) || is_null($terminalName))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehlerhafte Parameterübergabe'), REST_Controller::HTTP_OK);
+
+		$terminal = $this->_ci->TerminalModel->loadWhere(array('name' => $terminalName));
+
+		if (!hasData($terminal))
+			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Das Terminal kann nicht geladen werden. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
+
+		$terminalType = getData($terminal)[0]->type;
 
 		$user = $this->_ci->CardModel->loadWhere(array('zugangscode' => $hash, 'pin' => $pin));
 
@@ -95,14 +111,87 @@ class Cards extends API_Controller
 
 		$uid = getData($user)[0]->uid;
 
-		$person = $this->_ci->PersonModel->getByUid($uid);
+		$this->_ci->BenutzerModel->addJoin('public.tbl_person', 'person_id');
+		$benutzer = $this->_ci->BenutzerModel->load(array('uid' => $uid));
 
-		if (!hasData($person))
+		if (!hasData($benutzer))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Die Person kann nicht geladen werden. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
 
-		$person = getData($person)[0];
+		$benutzer = getData($benutzer)[0];
 
-		$this->_ci->response(array('uid' => $uid, 'lastname' => $person->nachname, 'firstname' => $person->vorname, 'error' => null), REST_Controller::HTTP_OK);
+		if ($terminalType === self::MITARBEITER)
+		{
+			$mitarbeiter = $this->_ci->MitarbeiterModel->load($benutzer->uid);
+
+			if (!hasData($mitarbeiter))
+				$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Mitarbeiter kann nicht geladen werden. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
+
+			$mitarbeiter = getData($mitarbeiter)[0];
+
+			if (getData($this->_ci->MitarbeiterModel->isMitarbeiter($benutzer->uid)))
+			{
+				$benutzerFunktion = $this->_ci->BenutzerfunktionModel->getBenutzerFunktionByUid($uid, null, date("Y-m-d"), date("Y-m-d"));
+
+				$oe = null;
+
+				if (hasData($benutzerFunktion))
+				{
+					$benutzerFunktion = getData($benutzerFunktion)[0];
+					$oe = $this->_ci->OrganisationseinheitModel->load($benutzerFunktion->oe_kurzbz);
+					if (hasData($oe))
+						$oe = getData($oe)[0]->bezeichnung;
+				}
+
+				$personData = array(
+					'uid' => $benutzer->uid,
+					'firstname' => $benutzer->vorname,
+					'lastname' => $benutzer->nachname,
+					'titelpre' => $benutzer->titelpre,
+					'titelpost' => $benutzer->titelpost,
+					'personnelnumber' => $mitarbeiter->personalnummer,
+					'printdate' => date('d.m.Y'),
+					'birthdate' => date_format(date_create($benutzer->gebdatum), 'd.m.Y'),
+					'organisationunit' => $oe
+				);
+			}
+		}
+		elseif ($terminalType === self::STUDENT)
+		{
+
+			$this->_ci->StudentModel->addJoin('public.tbl_studiengang', 'studiengang_kz');
+			$student = $this->_ci->StudentModel->load(array('student_uid' => $benutzer->uid));
+
+			if (!hasData($student))
+				$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Student kann nicht geladen werden. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
+
+			$student = getData($student)[0];
+
+			$studiensemester = $this->_ci->StudiensemesterModel->getAktOrNextSemester();
+
+			$studiensemester = getData($studiensemester)[0];
+
+			$beitrag = $this->_ci->KontoModel->checkStudienBeitrag($benutzer->uid, $studiensemester->studiensemester_kurzbz, $this->_ci->config->item('BUCHUNGSTYPEN'));
+
+			if (!hasData($beitrag))
+				$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Auslesen des Studienbeitrages. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
+
+
+			$personData = array(
+				'uid' => $benutzer->uid,
+				'firstname' => $benutzer->vorname,
+				'lastname' => $benutzer->nachname,
+				'titelpre' => $benutzer->titelpre,
+				'titelpost' => $benutzer->titelpost,
+				'degreeprogram' => $student->kurzbzlang,
+				'birthdate' => date_format(date_create($benutzer->gebdatum), 'd.m.Y'),
+				'matriculationnumber' => rtrim($student->matrikelnr),
+				'matr_nr' => $benutzer->matr_nr,
+				'printdate' => date('M.Y'),
+				'validto' => date_format(date_create($studiensemester->ende), 'd.m.Y')
+			);
+		}
+
+		$this->_ci->response(array('uid' => $uid, 'type' => $terminalType, 'personData' => json_encode($personData), 'error' => null), REST_Controller::HTTP_OK);
 	}
 
 	public function getPersonPhoto()
