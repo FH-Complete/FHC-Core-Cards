@@ -29,5 +29,4 @@ END $$;
 
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE extension.tbl_cards_terminal TO vilesci;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE extension.tbl_cards_terminal TO web;
 
