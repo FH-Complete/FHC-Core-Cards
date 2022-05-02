@@ -170,11 +170,10 @@ class Cards extends API_Controller
 
 			$studiensemester = getData($studiensemester)[0];
 
-			$beitrag = $this->_ci->KontoModel->checkStudienBeitrag($benutzer->uid, $studiensemester->studiensemester_kurzbz, $this->_ci->config->item('BUCHUNGSTYPEN'));
+			$beitrag = $this->_ci->KontoModel->checkStudienBeitrag($benutzer->uid, $studiensemester->studiensemester_kurzbz, implode("','" , $this->_ci->config->item('BUCHUNGSTYPEN')));
 
 			if (!hasData($beitrag))
 				$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Auslesen des Studienbeitrages. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
-
 
 			$personData = array(
 				'uid' => $benutzer->uid,
