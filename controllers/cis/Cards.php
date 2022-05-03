@@ -1,0 +1,218 @@
+<?php
+
+if (!defined('BASEPATH')) exit('No direct script access allowed');
+
+use \chillerlan\QRCode\QROptions;
+use \chillerlan\QRCode\QRCode;
+
+class Cards extends Auth_Controller
+{
+
+	private $_ci; // Code igniter instance
+
+	private $_uid;
+
+	/**
+	 * Constructor
+	 */
+	public function __construct()
+	{
+		parent::__construct(array(
+			'cardValidation' => 'admin:rw',
+			'getValidationData' => 'admin:rw',
+			'cardCreation' => 'extension/student_cards:rw',
+			'getQRCode' => 'extension/student_cards:rw',
+			'downloadQRCode' => 'extension/student_cards:rw'
+			)
+		);
+
+		$this->_ci =& get_instance();
+		$this->_ci->load->model('ressource/Betriebsmittelperson_model', 'BetriebsmittelpersonModel');
+		$this->_ci->load->model('person/Benutzer_model', 'BenutzerModel');
+		$this->_ci->load->model('person/Person_model', 'PersonModel');
+		$this->_ci->load->model('crm/Konto_model', 'KontoModel');
+		$this->_ci->load->model('crm/Student_model', 'StudentModel');
+		$this->_ci->load->model('organisation/Studiengang_model', 'StudiengangModel');
+		$this->_ci->load->model('extensions/FHC-Core-Cards/Card_model', 'CardModel');
+
+		$this->_ci->load->library('FilesystemLib');
+		$this->_ci->load->library('DocumentLib');
+
+		$this->_ci->load->config('extensions/FHC-Core-Cards/cards');
+
+
+		$this->_setAuthUID();
+
+	}
+
+	public function cardCreation()
+	{
+		$this->_ci->load->view('extensions/FHC-Core-Cards/cis/cardCreation');
+	}
+
+	public function cardValidation()
+	{
+		$this->_ci->load->view('extensions/FHC-Core-Cards/cis/cardValidation');
+	}
+
+	public function getValidationData()
+	{
+		$cardIdentifier = $this->_ci->input->post('cardIdentifier');
+
+		if (empty($cardIdentifier))
+			$this->terminateWithJsonError('Bitte eine Kartennummer angeben');
+
+		$card = $this->_ci->BetriebsmittelpersonModel->getBetriebsmittelZuordnung($cardIdentifier);
+
+		if (!hasData($card))
+			$this->terminateWithJsonError('Konnte Karte keiner Person zuweisen.');
+
+		$cardUser = getData($card)[0]->uid;
+
+		$user = $this->_ci->BenutzerModel->load(array('uid' => $cardUser));
+
+		if (!hasData($user))
+			$this->terminateWithJsonError('Die Person kann nicht geladen werden.');
+
+		$uid = getData($user)[0]->uid;
+
+		$studiengang = $this->_ci->KontoModel->getLastStudienbeitrag($uid, implode("','" , $this->_ci->config->item('BUCHUNGSTYPEN')));
+
+		if (isError($studiengang))
+			$this->terminateWithJsonError('Fehler beim Auslesen des Studienganges.');
+
+		if (!hasData($studiengang))
+			$this->terminateWithJsonError('Verlängerung der Karte ist derzeit nicht möglich da der Studienbeitrag noch nicht bezahlt wurde.');
+
+		$studiensemester_kurzbz = getData($studiengang)[0]->studiensemester_kurzbz;
+
+		$this->outputJsonSuccess($studiensemester_kurzbz);
+	}
+
+	public function getQRCode()
+	{
+		$student = $this->_ci->StudentModel->loadWhere(array('student_uid' => $this->_uid));
+
+		if (!hasData($student))
+			$this->terminateWithJsonError('Der Student kann nicht geladen werden.');
+
+		$studiengang = $this->_ci->StudiengangModel->loadWhere(array('studiengang_kz' => getData($student)[0]->studiengang_kz));
+
+		if (!hasData($studiengang))
+			$this->terminateWithJsonError('Der Studiengang kann nicht geladen werden.');
+
+		$studiengangTyp = getData($studiengang)[0]->typ;
+
+		if ($studiengangTyp !== 'm' && $studiengangTyp !== 'b')
+			$this->terminateWithJsonError('Sie sind nicht berechtigt.');
+
+		$person = $this->_ci->PersonModel->getByUid($this->_uid);
+
+		if (!hasData($person))
+			$this->terminateWithJsonError('Die Person kann nicht geladen werden.');
+
+		$person = getData($person)[0];
+
+		$cards = $this->_ci->BetriebsmittelpersonModel->getBetriebsmittel($person->person_id, 'Zutrittskarte', false);
+
+		if (hasData($cards))
+			$this->terminateWithJsonError('Sie haben bereits eine Zutrittskarte');
+
+		$result = $this->_ci->CardModel->loadWhere(array('uid' => $this->_uid));
+
+		$options = new QROptions([
+			'outputType' => QRCode::OUTPUT_MARKUP_SVG,
+			'addQuietzone' => true,
+			'quietzoneSize' => 1,
+			'scale' => 10
+		]);
+
+		$qrcode = new QRCode($options);
+
+		if (hasData($result))
+		{
+			$result = getData($result)[0];
+
+			$hash = $result->zugangscode;
+
+			$pin = $result->pin;
+			$this->outputJsonSuccess(array('svg' => $qrcode->render($hash), 'pin' => $pin));
+		}
+		else
+		{
+			do {
+				$token = generateToken();
+				$hash = hash('md5', $token);
+				$check = $this->_ci->CardModel->loadWhere(array('zugangscode' => $hash));
+			} while(hasData($check));
+
+			$pin = rand(1000,9999);
+
+			$insert = $this->_ci->CardModel->insert(array('uid' => $this->_uid,
+				'zugangscode' => $hash,
+				'pin' => $pin,
+				'insertamum' => date('Y-m-d H:i:s')));
+
+			if (isError($insert))
+				$this->terminateWithJsonError('Fehler beim Speichern');
+
+			$this->outputJsonSuccess(array('svg' => $qrcode->render($hash), 'pin' => $pin));
+		}
+	}
+
+	public function downloadQRCode()
+	{
+		$result = $this->_ci->CardModel->loadWhere(array('uid' => $this->_uid));
+
+		if (hasData($result))
+		{
+			$result = getData($result)[0];
+
+			$hash = $result->zugangscode;
+
+			$tempdir = sys_get_temp_dir().'/QR_Codes';
+
+			if (!file_exists($tempdir))
+				mkdir($tempdir, 0777, true);
+
+			$filename = $tempdir . '/' . 'QR_' . uniqid();
+			$filenamePng = $filename . '.png';
+			$filenamePdf = $filename . '.pdf';
+
+			$options = new QROptions([
+				'outputType' => QRCode::OUTPUT_IMAGE_PNG,
+				'cachefile' => $filenamePng,
+				'addQuietzone' => false,
+				'scale' => 10
+			]);
+
+			$qrcode = new QRCode($options);
+			$qrcode->render($hash);
+
+			$this->_ci->documentlib->convert($filenamePng,  $filename, 'pdf');
+
+			$files[] = $filenamePng;
+			$files[] = $filenamePdf;
+
+			$fsize = filesize($filenamePdf);
+			header('Content-type: application/pdf');
+			header('Content-Disposition: attachment; filename="QRCode.pdf"');
+			header('Content-Length: '.$fsize);
+
+			echo file_get_contents($filenamePdf);
+
+			foreach ($files as $file)
+				unlink($file);
+		}
+	}
+
+	/**
+	 * Retrieve the UID of the logged user and checks if it is valid
+	 */
+	private function _setAuthUID()
+	{
+		$this->_uid = getAuthUID();
+
+		if (!$this->_uid) show_error('User authentification failed');
+	}
+}
