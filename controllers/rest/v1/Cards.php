@@ -255,7 +255,7 @@ class Cards extends API_Controller
 	public function postCardData()
 	{
 		$uid = $this->_ci->post('uid');
-		$cardData = $this->_ci->post('cardIndetifier');
+		$cardData = $this->_ci->post('cardIdentifier');
 
 		if (is_null($uid) || is_null($cardData))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehlerhafte Parameterübergabe'), REST_Controller::HTTP_OK);
@@ -283,7 +283,7 @@ class Cards extends API_Controller
 		if (isError($insert))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Speichern des Betriebsmittels. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
 
-		$this->_ci->BetriebsmittelpersonModel->insert(
+		$insert = $this->_ci->BetriebsmittelpersonModel->insert(
 			array(
 				'betriebsmittel_id' => $insert->retval,
 				'person_id' => $person->person_id,
