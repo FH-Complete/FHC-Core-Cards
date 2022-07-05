@@ -290,7 +290,7 @@ class Cards extends API_Controller
 				'insertamum' => date('Y-m-d H:i:s'),
 				'insertvon' => $this->_uid,
 				'ausgegebenam' => date('Y-m-d'),
-				'uid' => $this->_uid
+				'uid' => $uid
 			)
 		);
 
