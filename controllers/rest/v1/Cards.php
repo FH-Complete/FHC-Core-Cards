@@ -9,7 +9,6 @@ class Cards extends API_Controller
 
 	private $_uid;
 
-	const MITARBEITER = 'mitarbeiter';
 	const STUDENT = 'student';
 
 	/**
@@ -30,7 +29,6 @@ class Cards extends API_Controller
 		$this->_ci->load->model('person/Benutzer_model', 'BenutzerModel');
 		$this->_ci->load->model('person/Benutzerfunktion_model', 'BenutzerfunktionModel');
 		$this->_ci->load->model('person/Person_model', 'PersonModel');
-		$this->_ci->load->model('ressource/Mitarbeiter_model', 'MitarbeiterModel');
 		$this->_ci->load->model('crm/Konto_model', 'KontoModel');
 		$this->_ci->load->model('crm/Akte_model', 'AkteModel');
 		$this->_ci->load->model('crm/Student_model', 'StudentModel');
@@ -102,8 +100,6 @@ class Cards extends API_Controller
 		if (!hasData($terminal))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Das Terminal kann nicht geladen werden. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
 
-		$terminalType = getData($terminal)[0]->type;
-
 		$user = $this->_ci->CardModel->loadWhere(array('zugangscode' => $hash, 'pin' => $pin));
 
 		if (!hasData($user))
@@ -119,43 +115,9 @@ class Cards extends API_Controller
 
 		$benutzer = getData($benutzer)[0];
 
-		if ($terminalType === self::MITARBEITER)
-		{
-			$mitarbeiter = $this->_ci->MitarbeiterModel->load($benutzer->uid);
+		$terminalType = getData($terminal)[0]->type;
 
-			if (!hasData($mitarbeiter))
-				$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Mitarbeiter kann nicht geladen werden. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
-
-			$mitarbeiter = getData($mitarbeiter)[0];
-
-			if (getData($this->_ci->MitarbeiterModel->isMitarbeiter($benutzer->uid)))
-			{
-				$benutzerFunktion = $this->_ci->BenutzerfunktionModel->getBenutzerFunktionByUid($uid, null, date("Y-m-d"), date("Y-m-d"));
-
-				$oe = null;
-
-				if (hasData($benutzerFunktion))
-				{
-					$benutzerFunktion = getData($benutzerFunktion)[0];
-					$oe = $this->_ci->OrganisationseinheitModel->load($benutzerFunktion->oe_kurzbz);
-					if (hasData($oe))
-						$oe = getData($oe)[0]->bezeichnung;
-				}
-
-				$personData = array(
-					'uid' => $benutzer->uid,
-					'firstname' => $benutzer->vorname,
-					'lastname' => $benutzer->nachname,
-					'titelpre' => $benutzer->titelpre,
-					'titelpost' => $benutzer->titelpost,
-					'personnelnumber' => $mitarbeiter->personalnummer,
-					'printdate' => date('d.m.Y'),
-					'birthdate' => date_format(date_create($benutzer->gebdatum), 'd.m.Y'),
-					'organisationunit' => $oe
-				);
-			}
-		}
-		elseif ($terminalType === self::STUDENT)
+		if ($terminalType === self::STUDENT)
 		{
 			$this->_ci->StudentModel->addJoin('public.tbl_studiengang', 'studiengang_kz');
 			$student = $this->_ci->StudentModel->load(array('student_uid' => $benutzer->uid));
@@ -182,9 +144,9 @@ class Cards extends API_Controller
 				'printdate' => date('M.Y'),
 				'validto' => date_format(date_create($studiensemester->ende), 'd.m.Y')
 			);
-		}
 
-		$this->_ci->response(array('uid' => $uid, 'type' => $terminalType, 'personData' => json_encode($personData), 'error' => null), REST_Controller::HTTP_OK);
+			$this->_ci->response(array('uid' => $uid, 'type' => $terminalType, 'personData' => json_encode($personData), 'error' => null), REST_Controller::HTTP_OK);
+		}
 	}
 
 	public function getPersonPhoto()

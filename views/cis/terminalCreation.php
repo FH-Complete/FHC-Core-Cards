@@ -1,54 +1,52 @@
-<div class="row">
-	<div class="col-lg-12">
-		<button id="newTerminal" class="btn btn-default">Terminal hinzufügen</button>
+<div class="row text-right">
+	<div class="col-xs-12">
+		<button value="Hinzufügen" class="btn btn-default hinzufuegen">
+			<i class="fa fa-plus fa-fw fa-1x" aria-hidden="true"></i>
+		</button>
 	</div>
 </div>
-<br />
-<form class="row terminalForm hidden">
+<div class="terminalForm" style="display:none">
 	<div class="form-group row">
-		<label for="terminalName" class="col-sm-2 col-form-label">Name</label>
-		<div class="col-sm-3">
+		<div class="col-sm-2">
+			<label for="terminalName">Name</label>
 			<input type="text" class="form-control" id="terminalName">
 		</div>
-	</div>
-
-	<div class="form-group row">
-		<label for="terminalBeschreibung" class="col-sm-2 col-form-label">Beschreibung</label>
 		<div class="col-sm-3">
+			<label for="terminalBeschreibung">Beschreibung</label>
 			<input type="text" class="form-control" id="terminalBeschreibung">
 		</div>
-	</div>
 
-	<div class="form-group row">
-		<label for="terminalOrt" class="col-sm-2 col-form-label">Ort</label>
-		<div class="col-sm-3">
+		<div class="col-sm-2">
+			<label for="terminalOrt">Ort</label>
 			<input type="text" class="form-control" id="terminalOrt">
 		</div>
-	</div>
 
-	<div class="form-group row">
-		<label for="terminalType" class="col-sm-2 col-form-label">Typ</label>
-		<div class="col-sm-3">
+		<div class="col-sm-2">
+			<label for="terminalType">Typ</label>
 			<select id="terminalType" class="form-control">
 				<option value="student">Student</option>
-				<option value="mitarbeiter">Mitarbeiter</option>
 			</select>
 		</div>
-	</div>
-
-	<div class="form-group row">
-		<label for="terminalAktiv" class="col-sm-2 col-form-label">Aktiv</label>
-		<div class="col-sm-3">
+		<div class="col-sm-1">
+			<label for="terminalAktiv">Aktiv</label>
 			<input type="checkbox" class="checkbox" id="terminalAktiv">
 		</div>
+		<div class="col-sm-1 text-center">
+			<label for="addTerminal">Speichern</label>
+			<button class="btn btn-default form-control" id="addTerminal">
+				<i class="fa fa-floppy-o fa-fw fa-1x" aria-hidden="true"></i>
+			</button>
+		</div>
 	</div>
 
 	<div class="form-group row">
-		<div class="col-sm-2">
-			<input class="form-control" type="button" value="Speichern" id="addTerminal" />
-		</div>
-		<div class="col-sm-2">
-			<input class="form-control" type="button" value="Abbrechen" id="cancelTerminal" />
-		</div>
+
+
 	</div>
-</form>
+
+	<div class="form-group row">
+
+
+
+	</div>
+</div>
