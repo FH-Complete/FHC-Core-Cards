@@ -134,7 +134,7 @@ class Cards extends API_Controller
 			$personData = array(
 				'uid' => $benutzer->uid,
 				'firstname' => $benutzer->vorname,
-				'lastname' => $benutzer->nachname . ', ' . $benutzer->titelpost,
+				'lastname' => $benutzer->nachname . ($benutzer->titelpost != null ? ', ' . $benutzer->titelpost : ''),
 				'titelpre' => $benutzer->titelpre,
 				'titelpost' => $benutzer->titelpost,
 				'degreeprogram' => $student->kurzbzlang,
