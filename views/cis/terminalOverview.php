@@ -3,16 +3,16 @@ $this->load->view(
 	'templates/FHC-Header',
 	array(
 		'title' => 'Card-Terminal',
-		'jquery' => true,
-		'jqueryui' => true,
-		'bootstrap' => true,
-		'fontawesome' => true,
-		'sbadmintemplate' => true,
+		'jquery3' => true,
+		'jqueryui1' => true,
+		'bootstrap3' => true,
+		'fontawesome4' => true,
+		'sbadmintemplate3' => true,
 		'navigationwidget' => true,
 		'ajaxlib' => true,
 		'dialoglib' => true,
-		'jquerycheckboxes' => true,
-		'tablesorter' => true,
+		'jquerycheckboxes1' => true,
+		'tablesorter2' => true,
 		'phrases' => array(
 		),
 		'customJSs' =>
