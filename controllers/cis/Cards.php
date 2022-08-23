@@ -39,7 +39,6 @@ class Cards extends Auth_Controller
 		$this->_ci->load->model('extensions/FHC-Core-Cards/Card_model', 'CardModel');
 		$this->_ci->load->model('ressource/Betriebsmittel_model', 'BetriebsmittelModel');
 
-		$this->_ci->load->library('FilesystemLib');
 		$this->_ci->load->library('DocumentLib');
 
 		$this->_ci->load->config('extensions/FHC-Core-Cards/cards');
