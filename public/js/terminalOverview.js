@@ -1,26 +1,70 @@
-$(document).ready(function() {
+const BASE_URL = FHC_JS_DATA_STORAGE_OBJECT.app_root + FHC_JS_DATA_STORAGE_OBJECT.ci_router;
+const CALLED_PATH = FHC_JS_DATA_STORAGE_OBJECT.called_path;
+const CONTROLLER_URL = BASE_URL + "/"+CALLED_PATH;
 
-	TerminalOverview.getTerminals();
+const TABLE = '[tableuniqueid = terminalOverview] #tableWidgetTabulator';
 
-	$('#newTerminal').click(function()
+function form_options(cell, formatterParams)
+{
+	var div = $("<div></div>");
+
+	var saveTerminal = $("<button class='saveTerminal btn btn-default'>" +
+							"<i class='fa fa-floppy-o fa-1x' aria-hidden='true'></i>"+
+						"</button>");
+
+	saveTerminal.on('click', function()
 	{
-		TerminalOverview._hiddeForm();
+		var data = {
+			'id' : cell.getData().cardsterminal_id,
+			'name' : cell.getData().name,
+			'beschreibung' : cell.getData().beschreibung,
+			'ort' : cell.getData().ort,
+			'type' : cell.getData().type,
+			'aktiv' : cell.getData().aktiv,
+		}
+		TerminalOverview.updateTerminal(data);
 	});
 
-	$('#cancelTerminal').click(function()
+	div.append(saveTerminal);
+
+	var deleteTerminal = $("<button class='deleteTerminal btn btn-default'>" +
+		"<i class='fa fa-trash fa-1x' aria-hidden='true'></i>"+
+		"</button>");
+
+	deleteTerminal.on('click', function()
 	{
-		TerminalOverview._hiddeForm();
+		var data = {
+			'id' : cell.getData().cardsterminal_id,
+		}
+		TerminalOverview.deleteTerminal(data);
+	});
+
+	div.append(deleteTerminal);
+	return div[0];
+}
+
+function form_type(cell, formatterParams)
+{
+	return cell.getData().type.charAt(0).toUpperCase() + cell.getData().type.slice(1);
+}
+
+function resortTable()
+{
+	$(TABLE).tabulator('setSort',
+		[
+			{column: 'aktiv', dir: 'desc'}
+		]
+	);
+}
+
+$(document).ready(function() {
+
+	$('.hinzufuegen').click(function()
+	{
+		$('.terminalForm').slideToggle(500);
 	});
 
 	$('#addTerminal').click(function()
-	{
-		TerminalOverview.addTerminal();
-	});
-});
-
-var TerminalOverview = {
-
-	addTerminal: function()
 	{
 		var name = $('#terminalName').val();
 		var beschreibung = $('#terminalBeschreibung').val();
@@ -28,123 +72,54 @@ var TerminalOverview = {
 		var type = $('#terminalType').val();
 		var aktiv = $('#terminalAktiv').prop('checked');
 
-		if (name === '' || beschreibung === '' || ort === '')
+		if (name === '' || beschreibung === '' || ort === '' || type === '')
 		{
 			FHC_DialogLib.alertWarning('Bitte alle Felder ausfüllen!');
 			return false;
 		}
 
-		FHC_AjaxClient.ajaxCallPost(
-			"extensions/FHC-Core-Cards/cis/Terminal/addTerminal",
-			{
-				name : name,
-				beschreibung : beschreibung,
-				ort : ort,
-				type : type,
-				aktiv : aktiv
-			},
-			{
-				successCallback: function(response, textStatus, jqXHR) {
-					if (FHC_AjaxClient.isError(response))
-					{
-						FHC_DialogLib.alertError(FHC_AjaxClient.getError(response));
-					}
-					else
-					{
-						TerminalOverview.getTerminals();
-						TerminalOverview._clearInputs();
-					}
-				},
-				errorCallback: function(jqXHR, textStatus, errorThrown)
-				{
-					FHC_DialogLib.alertError(jqXHR);
-				}
-			}
-		);
-	},
+		var data = {
+			name : name,
+			beschreibung : beschreibung,
+			ort : ort,
+			type : type,
+			aktiv : aktiv
+		}
+		TerminalOverview.addTerminal(data);
+	})
+});
 
-	updateTerminal: function(terminalID)
+var TerminalOverview = {
+
+	addTerminal: function(data)
 	{
 		FHC_AjaxClient.ajaxCallPost(
-			"extensions/FHC-Core-Cards/cis/Terminal/updateTerminal",
+			CALLED_PATH + "/addTerminal",
+				data,
 			{
-				id : terminalID,
-				name : $('#input_cardsName_' + terminalID).val(),
-				beschreibung : $('#input_cardsBeschreibung_' + terminalID).val(),
-				ort : $('#input_cardsOrt_' + terminalID).val(),
-				type : $('#input_cardsType_' + terminalID).val(),
-				aktiv : $('#input_cardsAktiv_' + terminalID).prop('checked')
-			},
-			{
-				successCallback: function(response, textStatus, jqXHR) {
-
-					if (FHC_AjaxClient.isError(response))
-					{
-						FHC_DialogLib.alertError(FHC_AjaxClient.getError(response));
-					}
-					else
-					{
-						TerminalOverview._setReadOnly(terminalID);
-					}
-				},
-				errorCallback: function(jqXHR, textStatus, errorThrown)
+				successCallback: function(data, textStatus, jqXHR)
 				{
-					FHC_DialogLib.alertError(jqXHR);
-				}
-			}
-		);
-	},
-
-	delTerminal: function(terminalID)
-	{
-		FHC_AjaxClient.ajaxCallPost(
-			"extensions/FHC-Core-Cards/cis/Terminal/delTerminal",
-			{
-				id : terminalID
-			},
-			{
-				successCallback: function(response, textStatus, jqXHR) {
-					if (FHC_AjaxClient.isError(response))
+					if (FHC_AjaxClient.isError(data))
 					{
 						FHC_DialogLib.alertError(FHC_AjaxClient.getError(response));
 					}
-					else
-					{
-						$('#cardsterminalRow_' + terminalID).remove();
-					}
-				},
-				errorCallback: function(jqXHR, textStatus, errorThrown)
-				{
-					FHC_DialogLib.alertError(jqXHR);
-				}
-			}
-		);
-	},
 
-	getTerminals: function()
-	{
-		FHC_AjaxClient.ajaxCallGet(
-			"extensions/FHC-Core-Cards/cis/Terminal/getTerminals",
-			{},
-			{
-				successCallback: function(response, textStatus, jqXHR) {
-					if (FHC_AjaxClient.isError(response))
+					if (FHC_AjaxClient.isSuccess(data))
 					{
-						FHC_DialogLib.alertError(FHC_AjaxClient.getError(response));
-					}
-					else
-					{
-						$("#terminalTable tbody").html("");
-						var terminals = FHC_AjaxClient.getData(response);
+						data = FHC_AjaxClient.getData(data);
 
-						$.each(terminals,
-							function() {
-								TerminalOverview._createRow(this)
-							}
+						$(TABLE).tabulator(
+							'addRow',
+							JSON.stringify({
+								cardsterminal_id: data.cardsterminal_id,
+								name: data.name,
+								beschreibung: data.beschreibung,
+								aktiv: data.aktiv,
+								ort: data.ort,
+								type: data.type
+							})
 						);
-
-						TerminalOverview._setUpdateEvents();
-						TerminalOverview._addTableSorter();
+						resortTable();
 					}
 				},
 				errorCallback: function(jqXHR, textStatus, errorThrown)
@@ -155,141 +130,57 @@ var TerminalOverview = {
 		);
 	},
 
-	_hiddeForm: function()
+	updateTerminal: function(data)
 	{
-		if ($('.terminalForm').hasClass('hidden'))
-			$('.terminalForm').removeClass('hidden');
-		else
-			$('.terminalForm').addClass('hidden');
-
-		TerminalOverview._clearInputs();
-	},
-
-	_clearInputs: function()
-	{
-		$('.terminalForm').find('input:text').each(function ()
-		{
-			$(this).val('');
-		});
-		$('#terminalAktiv').prop('checked', false);
-	},
-
-	_createRow: function(data)
-	{
-		var tr =
-			'<tr id="cardsterminalRow_' + data.cardsterminal_id + '">' +
-				'<td id="cardsName_' + data.cardsterminal_id + '">' + data.name + '</td>' +
-				'<td id="cardsBeschreibung_' + data.cardsterminal_id + '">' + data.beschreibung + '</td>' +
-				'<td id="cardsOrt_' + data.cardsterminal_id + '">' + data.ort + '</td>' +
-				'<td id="cardsType_' + data.cardsterminal_id + '">' + data.type + '</td>' +
-				'<td id="cardsAktiv_' + data.cardsterminal_id + '">' + (data.aktiv ? "Ja" : "Nein") + '</td>' +
-				'<td id="cardsAktion_' + data.cardsterminal_id + '">' +
-					'<i class="fa fa-edit editTerminal fa-2x" data-id="' + data.cardsterminal_id + '"></i>' +
-					'&nbsp' +
-					'<i class="fa fa-trash delTerminal fa-2x" data-id="' + data.cardsterminal_id + '"></i>' +
-				'</td>' +
-				'<td id="cardsSave_' + data.cardsterminal_id + '" class="hidden">' +
-					'<i class="fa fa-save updateTerminal fa-2x" data-id="' + data.cardsterminal_id + '"></i>' +
-				'</td>' +
-			'</tr>'
-
-		$("#terminalTable tbody").append(tr);
-	},
-
-	_addTableSorter: function()
-	{
-		Tablesort.addTablesorter("terminalTable", [[1, 0]], ["filter"], 2);
-	},
-
-	_setReadOnly: function(terminalID)
-	{
-		$('#cardsterminalRow_' + terminalID + ' td').each(function ()
-		{
-			var inputid = $(this).prop('id');
-
-			if (inputid === 'cardsAktiv_' + terminalID)
+		FHC_AjaxClient.ajaxCallPost(
+			CALLED_PATH + "/updateTerminal",
+				data,
 			{
-				var inputvalue = $('#input_' + inputid).prop('checked');
-				var newinput = (inputvalue === true ? "Ja" : "Nein")
+				successCallback: function(data, textStatus, jqXHR)
+				{
+					if (FHC_AjaxClient.isError(data))
+					{
+						FHC_DialogLib.alertError(FHC_AjaxClient.getError(data));
+					}
+
+					if (FHC_AjaxClient.isSuccess(data))
+					{
+						resortTable();
+					}
+				},
+				errorCallback: function(jqXHR, textStatus, errorThrown)
+				{
+					FHC_DialogLib.alertError(jqXHR);
+				}
 			}
-			else if ((inputid !== 'cardsAktion_' + terminalID) && (inputid !== 'cardsSave_' + terminalID))
-			{
-				var newinput = $('#input_' + inputid).val();
-			}
-			else
-			{
-				$('#cardsAktion_' + terminalID).removeClass('hidden');
-				$('#cardsSave_' + terminalID).addClass('hidden');
-				return;
-			}
-			$(this).html(newinput);
-		});
+		);
 	},
 
-	_formatDateToGerman: function(date)
+	deleteTerminal: function(data)
 	{
-		if (date !== null)
-			return date.substring(8, 10) + "." + date.substring(5, 7) + "." + date.substring(0, 4);
-		else
-			return '-';
-	},
-
-	_setUpdateEvents: function()
-	{
-		$('.editTerminal').click(function()
-		{
-			var terminalID = ($(this).data('id'));
-
-			$('#cardsterminalRow_' + terminalID + ' td').each(function ()
+		FHC_AjaxClient.ajaxCallPost(
+			CALLED_PATH + "/deleteTerminal",
+			data,
 			{
-				var inputid = $(this).prop('id');
-				var inputvalue = $(this).html();
+				successCallback: function(data, textStatus, jqXHR) {
+					if (FHC_AjaxClient.isError(data))
+					{
+						FHC_AjaxClient.hideVeil();
+						FHC_DialogLib.alertError(FHC_AjaxClient.getError(data))
+					}
 
-				if (inputid === 'cardsType_' + terminalID)
+					if (FHC_AjaxClient.isSuccess(data))
+					{
+						data = FHC_AjaxClient.getData(data);
+						$(TABLE).tabulator('deleteRow', data.cardsterminal_id);
+					}
+				},
+				errorCallback: function(jqXHR, textStatus, errorThrown)
 				{
-					var newInput =
-						'<select id="input_' + inputid + '" class="form-control">' +
-							'<option value="student"' + (inputvalue === "student" ? "selected" : "") + '>Student</option>' +
-							'<option value="mitarbeiter"' + (inputvalue === "mitarbeiter" ? "selected" : "") + '>Mitarbeiter</option>' +
-						'</select>';
+					FHC_DialogLib.alertError(jqXHR);
 				}
-				else if (inputid === 'cardsAktiv_' + terminalID)
-				{
-					var newInput =
-						'<input type="checkbox" class="checkbox" id="input_' + inputid + '" ' + (inputvalue === "Ja" ? "checked" : "") + '/>'
-				}
-				else if ((inputid !== 'cardsAktion_' + terminalID) && (inputid !== 'cardsSave_' + terminalID))
-				{
-					var newInput =
-						'<input type="text" class="form-control" id="input_' + inputid +'" value="'+ inputvalue  +'"/>';
-				}
-				else
-				{
-					$('#cardsAktion_' + terminalID).addClass('hidden');
-					$('#cardsSave_' + terminalID).removeClass('hidden');
-					return;
-				}
-
-				$(this).html(newInput);
-			});
-
-
-		});
-
-		$('.delTerminal').click(function()
-		{
-			var terminalID = ($(this).data('id'));
-
-			TerminalOverview.delTerminal(terminalID);
-		});
-
-		$('.updateTerminal').click(function()
-		{
-			var terminalID = ($(this).data('id'));
-
-			TerminalOverview.updateTerminal(terminalID);
-			
-		});
-	}
+			}
+		);
+	},
 }
 

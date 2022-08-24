@@ -19,7 +19,10 @@ class Cards extends Auth_Controller
 	{
 		parent::__construct(array(
 			'cardValidation' => 'admin:rw',
+			'cardLocking' => 'admin:rw',
 			'getValidationData' => 'admin:rw',
+			'searchPerson' => 'admin:rw',
+			'getCards' => 'admin:rw',
 			'cardCreation' => 'extension/student_cards:rw',
 			'getQRCode' => 'extension/student_cards:rw',
 			'downloadQRCode' => 'extension/student_cards:rw'
@@ -34,8 +37,8 @@ class Cards extends Auth_Controller
 		$this->_ci->load->model('crm/Student_model', 'StudentModel');
 		$this->_ci->load->model('organisation/Studiengang_model', 'StudiengangModel');
 		$this->_ci->load->model('extensions/FHC-Core-Cards/Card_model', 'CardModel');
+		$this->_ci->load->model('ressource/Betriebsmittel_model', 'BetriebsmittelModel');
 
-		$this->_ci->load->library('FilesystemLib');
 		$this->_ci->load->library('DocumentLib');
 
 		$this->_ci->load->config('extensions/FHC-Core-Cards/cards');
@@ -87,6 +90,50 @@ class Cards extends Auth_Controller
 		$studiensemester_kurzbz = getData($studiengang)[0]->studiensemester_kurzbz;
 
 		$this->outputJsonSuccess($studiensemester_kurzbz);
+	}
+
+	public function cardLocking()
+	{
+		$betriebsmittel = $this->_ci->input->post('betriebsmittelid');
+		$anmerkung = $this->_ci->input->post('anmerkung');
+
+		if (empty($betriebsmittel))
+			$this->terminateWithJsonError('Bitte eine Kartennummer angeben');
+
+		$update = $this->_ci->BetriebsmittelpersonModel->update(
+			array
+			(
+				'betriebsmittel_id' => $betriebsmittel
+			),
+			array
+			(
+				'anmerkung' => $anmerkung,
+				'retouram' => date('Y-m-d'),
+				'updateamum' => date('Y-m-d H:i:s'),
+				'updatevon' => $this->_uid
+			)
+		);
+
+		if (isError($update))
+			$this->terminateWithJsonError(getError($update));
+
+		$this->outputJsonSuccess('Success');
+	}
+
+	public function getCards()
+	{
+		$personID = $this->_ci->input->post('personid');
+
+		if (empty($personID))
+			$this->terminateWithJsonError('Bitte eine Person auswählen');
+
+		$this->_ci->BetriebsmittelpersonModel->addSelect('wawi.tbl_betriebsmittelperson.anmerkung, ausgegebenam, betriebsmittel_id, retouram');
+		$card = $this->_ci->BetriebsmittelpersonModel->getBetriebsmittel($personID, 'Zutrittskarte');
+
+		if (!hasData($card))
+			$this->terminateWithJsonError('Die Person hat keine Zutrittskarte.');
+
+		$this->outputJsonSuccess(getData($card));
 	}
 
 	public function getQRCode()
@@ -204,6 +251,18 @@ class Cards extends Auth_Controller
 			foreach ($files as $file)
 				unlink($file);
 		}
+	}
+
+	public function searchPerson()
+	{
+		$filter = mb_strtolower($this->_ci->input->get('term'));
+
+		$result = $this->_ci->StudentModel->searchStudent($filter);
+
+		if (isSuccess($result))
+			$this->outputJson($result->retval);
+		else
+			$this->outputJson(null);
 	}
 
 	/**

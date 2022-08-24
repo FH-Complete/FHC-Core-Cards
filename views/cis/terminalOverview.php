@@ -7,41 +7,40 @@ $this->load->view(
 		'jqueryui' => true,
 		'bootstrap' => true,
 		'fontawesome' => true,
-		'sbadmintemplate' => true,
-		'navigationwidget' => true,
+		'tablewidget' => true,
+		'tabulator' => true,
 		'ajaxlib' => true,
 		'dialoglib' => true,
-		'jquerycheckboxes' => true,
-		'tablesorter' => true,
 		'phrases' => array(
+			'ui' => array(
+				'global'
+			)
 		),
-		'customJSs' =>
-			array(
-				'public/extensions/FHC-Core-Cards/js/cardsCreation.js',
-				'public/extensions/FHC-Core-Cards/js/terminalOverview.js',
-				'public/js/tablesort/tablesort.js'
-			),
+		'customJSs' => array(
+			'public/extensions/FHC-Core-Cards/js/cardsCreation.js',
+			'public/extensions/FHC-Core-Cards/js/terminalOverview.js',
+			'public/js/tablesort/tablesort.js',
+			'public/js/bootstrapper.js',
+		)
 	)
 );
 ?>
 <body>
 	<div id="wrapper">
-
-		<?php echo $this->widgetlib->widget('NavigationWidget'); ?>
-
 		<div id="page-wrapper">
 			<div class="container-fluid">
 				<div class="row">
 					<div class="col-lg-12">
 						<h3 class="page-header">
-							Terminal Overview
+							Overview - Terminal
 						</h3>
 					</div>
 				</div>
 				<div>
 					<?php $this->load->view('extensions/FHC-Core-Cards/cis/terminalOverviewData.php'); ?>
+				</div>
+				<div>
 					<?php $this->load->view('extensions/FHC-Core-Cards/cis/terminalCreation.php'); ?>
-
 				</div>
 			</div>
 		</div>

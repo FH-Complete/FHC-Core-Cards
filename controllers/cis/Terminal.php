@@ -16,10 +16,9 @@ class Terminal extends Auth_Controller
 	public function __construct()
 	{
 		parent::__construct(array(
-				'terminalOverview' => 'admin:rw',
+				'index' => 'admin:rw',
 				'addTerminal' => 'admin:rw',
-				'getTerminals' => 'admin:rw',
-				'delTerminal' => 'admin:rw',
+				'deleteTerminal' => 'admin:rw',
 				'updateTerminal' => 'admin:rw'
 			)
 		);
@@ -41,10 +40,9 @@ class Terminal extends Auth_Controller
 
 		$this->setControllerId(); // sets the controller id
 		$this->_setAuthUID();
-
 	}
 
-	public function terminalOverview()
+	public function index()
 	{
 		$data[self::FHC_CONTROLLER_ID] = $this->getControllerId();
 
@@ -62,7 +60,7 @@ class Terminal extends Auth_Controller
 		if (is_null($name) || is_null($beschreibung) || is_null($ort))
 			$this->terminateWithJsonError('Bitte alle Felder ausfüllen!');
 
-		if ($type !== 'student' && $type !== 'mitarbeiter')
+		if ($type !== 'student')
 			$this->terminateWithJsonError('Kein gültiger Terminaltyp');
 
 		$result = $this->_ci->TerminalModel->insert(
@@ -77,20 +75,32 @@ class Terminal extends Auth_Controller
 			)
 		);
 
+		if (isError($result))
+			$this->terminateWithJsonError(getError($result));
+
 		if (success($result))
 		{
-			$terminal = $this->_ci->TerminalModel->loadWhere(array('cardsterminal_id' => $result->retval));
-			$this->outputJson($terminal);
+			$this->outputJsonSuccess(array
+				(
+					'cardsterminal_id' => $result->retval,
+					'name' => $name,
+					'beschreibung' => $beschreibung,
+					'aktiv' => $aktiv,
+					'ort' => $ort,
+					'type' => $type
+				)
+			);
 		}
-
 	}
 
-	public function delTerminal()
+	public function deleteTerminal()
 	{
 		$terminalID = $this->_ci->input->post('id');
 		$result = $this->_ci->TerminalModel->delete(array('cardsterminal_id' => $terminalID));
 
-		$this->outputJson($result);
+		if (isError($result))
+			$this->terminateWithJsonError(getError($result));
+		$this->outputJsonSuccess(getData($result));
 	}
 
 	public function updateTerminal()
@@ -105,7 +115,7 @@ class Terminal extends Auth_Controller
 		if (is_null($name) || is_null($beschreibung) || is_null($ort))
 			$this->terminateWithJsonError('Bitte alle Felder ausfüllen!');
 
-		if ($type !== 'student' && $type !== 'mitarbeiter')
+		if ($type !== 'student')
 			$this->terminateWithJsonError('Kein gültiger Terminaltyp');
 
 		$result = $this->_ci->TerminalModel->update(
@@ -126,11 +136,6 @@ class Terminal extends Auth_Controller
 		);
 
 		$this->outputJson($result);
-	}
-
-	public function getTerminals()
-	{
-		$this->outputJson($this->_ci->TerminalModel->load());
 	}
 
 	/**
