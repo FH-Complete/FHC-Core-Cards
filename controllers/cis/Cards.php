@@ -32,12 +32,10 @@ class Cards extends Auth_Controller
 		$this->_ci =& get_instance();
 		$this->_ci->load->model('ressource/Betriebsmittelperson_model', 'BetriebsmittelpersonModel');
 		$this->_ci->load->model('person/Benutzer_model', 'BenutzerModel');
-		$this->_ci->load->model('person/Person_model', 'PersonModel');
 		$this->_ci->load->model('crm/Konto_model', 'KontoModel');
 		$this->_ci->load->model('crm/Student_model', 'StudentModel');
 		$this->_ci->load->model('organisation/Studiengang_model', 'StudiengangModel');
 		$this->_ci->load->model('extensions/FHC-Core-Cards/Card_model', 'CardModel');
-		$this->_ci->load->model('ressource/Betriebsmittel_model', 'BetriebsmittelModel');
 
 		$this->_ci->load->library('DocumentLib');
 
@@ -94,41 +92,57 @@ class Cards extends Auth_Controller
 
 	public function cardLocking()
 	{
-		$betriebsmittel = $this->_ci->input->post('betriebsmittelid');
+		$betriebsmittel_id = $this->_ci->input->post('betriebsmittelid');
 		$anmerkung = $this->_ci->input->post('anmerkung');
+		$uid = $this->_ci->input->post('uid');
 
-		if (empty($betriebsmittel))
+		if (empty($betriebsmittel_id))
 			$this->terminateWithJsonError('Bitte eine Kartennummer angeben');
 
-		$update = $this->_ci->BetriebsmittelpersonModel->update(
-			array
-			(
-				'betriebsmittel_id' => $betriebsmittel
-			),
-			array
-			(
-				'anmerkung' => $anmerkung,
-				'retouram' => date('Y-m-d'),
-				'updateamum' => date('Y-m-d H:i:s'),
-				'updatevon' => $this->_uid
-			)
-		);
+		$betriebsmittel = $this->_ci->BetriebsmittelpersonModel->loadWhere(array('betriebsmittel_id' => $betriebsmittel_id));
 
-		if (isError($update))
-			$this->terminateWithJsonError(getError($update));
+		if (isError($betriebsmittel))
+			$this->terminateWithJsonError(getError($betriebsmittel));
 
-		$this->outputJsonSuccess('Success');
+		if (!hasData($betriebsmittel))
+			$this->terminateWithJsonError('Zutrittskarte nicht gefunden');
+
+		$betriebsmittel = getData($betriebsmittel)[0];
+
+		if ($betriebsmittel->uid === $uid)
+		{
+			$update = $this->_ci->BetriebsmittelpersonModel->update(
+				array
+				(
+					'betriebsmittel_id' => $betriebsmittel->betriebsmittel_id
+				),
+				array
+				(
+					'anmerkung' => $anmerkung,
+					'retouram' => date('Y-m-d'),
+					'updateamum' => date('Y-m-d H:i:s'),
+					'updatevon' => $this->_uid
+				)
+			);
+
+			if (isError($update))
+				$this->terminateWithJsonError(getError($update));
+
+			$this->outputJsonSuccess('Success');
+		}
+		else
+			$this->terminateWithJsonError('Fehler beim Sperren der Karte');
 	}
 
 	public function getCards()
 	{
-		$personID = $this->_ci->input->post('personid');
+		$uid = $this->_ci->input->post('uid');
 
-		if (empty($personID))
+		if (empty($uid))
 			$this->terminateWithJsonError('Bitte eine Person auswählen');
 
 		$this->_ci->BetriebsmittelpersonModel->addSelect('wawi.tbl_betriebsmittelperson.anmerkung, ausgegebenam, betriebsmittel_id, retouram');
-		$card = $this->_ci->BetriebsmittelpersonModel->getBetriebsmittel($personID, 'Zutrittskarte');
+		$card = $this->_ci->BetriebsmittelpersonModel->getBetriebsmittelByUid($uid, 'Zutrittskarte');
 
 		if (!hasData($card))
 			$this->terminateWithJsonError('Die Person hat keine Zutrittskarte.');
@@ -153,14 +167,7 @@ class Cards extends Auth_Controller
 		if ($studiengangTyp !== 'm' && $studiengangTyp !== 'b')
 			$this->terminateWithJsonError('Sie sind nicht berechtigt.');
 
-		$person = $this->_ci->PersonModel->getByUid($this->_uid);
-
-		if (!hasData($person))
-			$this->terminateWithJsonError('Die Person kann nicht geladen werden.');
-
-		$person = getData($person)[0];
-
-		$cards = $this->_ci->BetriebsmittelpersonModel->getBetriebsmittel($person->person_id, 'Zutrittskarte', false);
+		$cards = $this->_ci->BetriebsmittelpersonModel->getBetriebsmittelByUid($this->_uid, 'Zutrittskarte');
 
 		if (hasData($cards))
 			$this->terminateWithJsonError('Sie haben bereits eine Zutrittskarte');

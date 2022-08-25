@@ -137,10 +137,11 @@ var Cards = {
 		{
 			var id = Cards._getIdFromElementID(this.id);
 			var anmerkung = $('#anmerkung_' + id).val();
-
+			var uid = $('#uid').val();
 			var data = {
 				"betriebsmittelid": id,
-				"anmerkung" : anmerkung
+				"anmerkung" : anmerkung,
+				"uid" : uid
 			};
 			Cards.locking(data);
 		});
@@ -172,17 +173,17 @@ $(document).ready(function() {
 		},
 		select: function(event, ui)
 		{
-			$('#personid').val(ui.item.person_id);
+			$('#uid').val(ui.item.student_uid);
 			$('#showing').prop('disabled', false);
 		}
 	});
 
 	$('#showing').click(function()
 	{
-		var personid = $('#personid').val();
+		var uid = $('#uid').val();
 
 		var data = {
-			'personid' : personid
+			'uid' : uid
 		}
 		Cards.getFromPerson(data);
 	});
