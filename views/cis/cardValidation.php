@@ -46,7 +46,7 @@
 			</div>
 			<div class="col-xs-4">
 				<button id="showing" class="btn btn-default" disabled="disabled">Anzeigen</button>
-				<input type="hidden" class="hidden" id="personid"/>
+				<input type="hidden" class="hidden" id="uid"/>
 			</div>
 		</div>
 		<div class="row" id="cardOutput"></div>

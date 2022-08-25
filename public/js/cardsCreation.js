@@ -26,7 +26,7 @@ var CardsCreation = {
 						$('.infos').removeClass('hidden');
 						$('.infos div').empty();
 						$('#qrCode').append(retval.svg);
-						$('#pinCode').append('Ihr Pin zum Verlängern der Karte: <b>' + retval.pin + '</b');
+						$('#pinCode').append('Ihr Pin zum Drucken der Karte: <b>' + retval.pin + '</b');
 					}
 				},
 				errorCallback: function(jqXHR, textStatus, errorThrown)
