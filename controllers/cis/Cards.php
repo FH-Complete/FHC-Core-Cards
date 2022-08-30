@@ -36,6 +36,7 @@ class Cards extends Auth_Controller
 		$this->_ci->load->model('crm/Student_model', 'StudentModel');
 		$this->_ci->load->model('organisation/Studiengang_model', 'StudiengangModel');
 		$this->_ci->load->model('extensions/FHC-Core-Cards/Card_model', 'CardModel');
+		$this->_ci->load->model('organisation/Studiensemester_model', 'StudiensemesterModel');
 
 		$this->_ci->load->library('DocumentLib');
 
@@ -77,17 +78,30 @@ class Cards extends Auth_Controller
 
 		$uid = getData($user)[0]->uid;
 
-		$studiengang = $this->_ci->KontoModel->getLastStudienbeitrag($uid, implode("','" , $this->_ci->config->item('BUCHUNGSTYPEN')));
+		$bezaehlteStudiengaenge = $this->_ci->KontoModel->getStudienbeitraege($uid, implode("','" , $this->_ci->config->item('BUCHUNGSTYPEN')));
 
-		if (isError($studiengang))
+		if (isError($bezaehlteStudiengaenge))
 			$this->terminateWithJsonError('Fehler beim Auslesen des Studienganges.');
 
-		if (!hasData($studiengang))
+		if (!hasData($bezaehlteStudiengaenge))
 			$this->terminateWithJsonError('Verlängerung der Karte ist derzeit nicht möglich da der Studienbeitrag noch nicht bezahlt wurde.');
 
-		$studiensemester_kurzbz = getData($studiengang)[0]->studiensemester_kurzbz;
+		$bezaehlteStudiengaenge = getData($bezaehlteStudiengaenge);
+		$lastStudienbeitrag = $bezaehlteStudiengaenge[0];
 
-		$this->outputJsonSuccess($studiensemester_kurzbz);
+		$aktSemester = $this->_ci->StudiensemesterModel->getAktOrNextSemester();
+
+		if (!hasData($aktSemester))
+			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Auslesen des Studienganges. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
+
+		$aktSemester = getData($aktSemester)[0];
+
+		if (in_array($aktSemester->studiensemester_kurzbz, array_column($bezaehlteStudiengaenge, 'studiensemester_kurzbz')))
+			$semester = $aktSemester->studiensemester_kurzbz;
+		else
+			$semester = $lastStudienbeitrag->studiensemester_kurzbz;
+
+		$this->outputJsonSuccess($semester);
 	}
 
 	public function cardLocking()

@@ -15,7 +15,7 @@ var Cards = {
 					if (FHC_AjaxClient.isError(response))
 						Cards._writeError(FHC_AjaxClient.getError(response));
 					else
-						Cards._writeSuccess('Karte gültig bis ' + FHC_AjaxClient.getData(response))
+						Cards._writeSuccess('Karte gültig für ' + FHC_AjaxClient.getData(response))
 				},
 				errorCallback: function(jqXHR, textStatus, errorThrown)
 				{
