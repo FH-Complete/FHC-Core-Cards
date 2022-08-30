@@ -145,7 +145,7 @@ class Cards extends API_Controller
 				'validto' => date_format(date_create($studiensemester->ende), 'd.m.Y')
 			);
 
-			$this->_ci->response(array('uid' => $uid, 'type' => $terminalType, 'personData' => json_encode($personData), 'error' => null), REST_Controller::HTTP_OK);
+			$this->_ci->response(array('uid' => $uid, 'type' => $terminalType, 'personData' => json_encode($personData, JSON_UNESCAPED_UNICODE), 'error' => null), REST_Controller::HTTP_OK);
 		}
 	}
 
