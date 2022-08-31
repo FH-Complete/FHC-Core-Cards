@@ -70,17 +70,30 @@ class Cards extends API_Controller
 
 		$uid = getData($user)[0]->uid;
 
-		$studiengang = $this->_ci->KontoModel->getLastStudienbeitrag($uid, implode("','" , $this->_ci->config->item('BUCHUNGSTYPEN')));
+		$bezaehlteStudiengaenge = $this->_ci->KontoModel->getStudienbeitraege($uid, implode("','" , $this->_ci->config->item('BUCHUNGSTYPEN')));
 
-		if (isError($studiengang))
+		if (isError($bezaehlteStudiengaenge))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Auslesen des Studienganges. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
 
-		if (!hasData($studiengang))
+		if (!hasData($bezaehlteStudiengaenge))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Verlängerung der Karte ist derzeit nicht möglich da der Studienbeitrag noch nicht bezahlt wurde.'), REST_Controller::HTTP_OK);
 
-		$studiensemester_kurzbz = getData($studiengang)[0]->studiensemester_kurzbz;
+		$bezaehlteStudiengaenge = getData($bezaehlteStudiengaenge);
+		$lastStudienbeitrag = $bezaehlteStudiengaenge[0];
 
-		$this->_ci->response(array('validdate' => 'gültig bis ' . $studiensemester_kurzbz, 'error' => null), REST_Controller::HTTP_OK);
+		$aktSemester = $this->_ci->StudiensemesterModel->getAktOrNextSemester();
+
+		if (!hasData($aktSemester))
+			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Auslesen des Studienganges. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
+
+		$aktSemester = getData($aktSemester)[0];
+
+		if (in_array($aktSemester->studiensemester_kurzbz, array_column($bezaehlteStudiengaenge, 'studiensemester_kurzbz')))
+			$semester = $aktSemester->studiensemester_kurzbz;
+		else
+			$semester = $lastStudienbeitrag->studiensemester_kurzbz;
+
+		$this->_ci->response(array('validdate' => 'gültig für/valid for ' . $semester, 'error' => null), REST_Controller::HTTP_OK);
 	}
 
 	/**
