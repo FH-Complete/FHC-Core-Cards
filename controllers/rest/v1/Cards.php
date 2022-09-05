@@ -133,8 +133,8 @@ class Cards extends API_Controller
 
 			$personData = array(
 				'uid' => $benutzer->uid,
-				'firstname' => transform_umlaute($benutzer->vorname),
-				'lastname' => transform_umlaute($benutzer->nachname) . ($benutzer->titelpost != null ? ', ' . $benutzer->titelpost : ''),
+				'firstname' => $benutzer->vorname,
+				'lastname' => $benutzer->nachname . ($benutzer->titelpost != null ? ', ' . $benutzer->titelpost : ''),
 				'titelpre' => $benutzer->titelpre,
 				'titelpost' => $benutzer->titelpost,
 				'degreeprogram' => $student->kurzbzlang,
@@ -145,7 +145,7 @@ class Cards extends API_Controller
 				'validto' => date_format(date_create($studiensemester->ende), 'd.m.Y')
 			);
 
-			$this->_ci->response(array('uid' => $uid, 'type' => $terminalType, 'personData' => json_encode($personData), 'error' => null), REST_Controller::HTTP_OK);
+			$this->_ci->response(array('uid' => $uid, 'type' => $terminalType, 'personData' => $personData, 'error' => null), REST_Controller::HTTP_OK);
 		}
 	}
 
