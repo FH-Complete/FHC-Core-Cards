@@ -192,7 +192,8 @@ class Cards extends Auth_Controller
 			'outputType' => QRCode::OUTPUT_MARKUP_SVG,
 			'addQuietzone' => true,
 			'quietzoneSize' => 1,
-			'scale' => 10
+			'scale' => 8,
+			'eccLevel' => 0b10
 		]);
 
 		$qrcode = new QRCode($options);
@@ -251,7 +252,7 @@ class Cards extends Auth_Controller
 				'outputType' => QRCode::OUTPUT_IMAGE_PNG,
 				'cachefile' => $filenamePng,
 				'addQuietzone' => false,
-				'scale' => 10
+				'eccLevel' => 0b10
 			]);
 
 			$qrcode = new QRCode($options);
