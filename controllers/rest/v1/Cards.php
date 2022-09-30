@@ -9,7 +9,6 @@ class Cards extends API_Controller
 
 	private $_uid;
 
-	const MITARBEITER = 'mitarbeiter';
 	const STUDENT = 'student';
 
 	/**
@@ -30,7 +29,6 @@ class Cards extends API_Controller
 		$this->_ci->load->model('person/Benutzer_model', 'BenutzerModel');
 		$this->_ci->load->model('person/Benutzerfunktion_model', 'BenutzerfunktionModel');
 		$this->_ci->load->model('person/Person_model', 'PersonModel');
-		$this->_ci->load->model('ressource/Mitarbeiter_model', 'MitarbeiterModel');
 		$this->_ci->load->model('crm/Konto_model', 'KontoModel');
 		$this->_ci->load->model('crm/Akte_model', 'AkteModel');
 		$this->_ci->load->model('crm/Student_model', 'StudentModel');
@@ -72,17 +70,30 @@ class Cards extends API_Controller
 
 		$uid = getData($user)[0]->uid;
 
-		$studiengang = $this->_ci->KontoModel->getLastStudienbeitrag($uid, implode("','" , $this->_ci->config->item('BUCHUNGSTYPEN')));
+		$bezaehlteStudiengaenge = $this->_ci->KontoModel->getStudienbeitraege($uid, implode("','" , $this->_ci->config->item('BUCHUNGSTYPEN')));
 
-		if (isError($studiengang))
+		if (isError($bezaehlteStudiengaenge))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Auslesen des Studienganges. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
 
-		if (!hasData($studiengang))
+		if (!hasData($bezaehlteStudiengaenge))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Verlängerung der Karte ist derzeit nicht möglich da der Studienbeitrag noch nicht bezahlt wurde.'), REST_Controller::HTTP_OK);
 
-		$studiensemester_kurzbz = getData($studiengang)[0]->studiensemester_kurzbz;
+		$bezaehlteStudiengaenge = getData($bezaehlteStudiengaenge);
+		$lastStudienbeitrag = $bezaehlteStudiengaenge[0];
 
-		$this->_ci->response(array('validdate' => 'gültig bis ' . $studiensemester_kurzbz, 'error' => null), REST_Controller::HTTP_OK);
+		$aktSemester = $this->_ci->StudiensemesterModel->getAktOrNextSemester();
+
+		if (!hasData($aktSemester))
+			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Auslesen des Studienganges. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
+
+		$aktSemester = getData($aktSemester)[0];
+
+		if (in_array($aktSemester->studiensemester_kurzbz, array_column($bezaehlteStudiengaenge, 'studiensemester_kurzbz')))
+			$semester = $aktSemester->studiensemester_kurzbz;
+		else
+			$semester = $lastStudienbeitrag->studiensemester_kurzbz;
+
+		$this->_ci->response(array('validdate' => 'gültig für/valid for ' . $semester, 'error' => null), REST_Controller::HTTP_OK);
 	}
 
 	/**
@@ -102,8 +113,6 @@ class Cards extends API_Controller
 		if (!hasData($terminal))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Das Terminal kann nicht geladen werden. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
 
-		$terminalType = getData($terminal)[0]->type;
-
 		$user = $this->_ci->CardModel->loadWhere(array('zugangscode' => $hash, 'pin' => $pin));
 
 		if (!hasData($user))
@@ -119,45 +128,10 @@ class Cards extends API_Controller
 
 		$benutzer = getData($benutzer)[0];
 
-		if ($terminalType === self::MITARBEITER)
+		$terminalType = getData($terminal)[0]->type;
+
+		if ($terminalType === self::STUDENT)
 		{
-			$mitarbeiter = $this->_ci->MitarbeiterModel->load($benutzer->uid);
-
-			if (!hasData($mitarbeiter))
-				$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Mitarbeiter kann nicht geladen werden. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
-
-			$mitarbeiter = getData($mitarbeiter)[0];
-
-			if (getData($this->_ci->MitarbeiterModel->isMitarbeiter($benutzer->uid)))
-			{
-				$benutzerFunktion = $this->_ci->BenutzerfunktionModel->getBenutzerFunktionByUid($uid, null, date("Y-m-d"), date("Y-m-d"));
-
-				$oe = null;
-
-				if (hasData($benutzerFunktion))
-				{
-					$benutzerFunktion = getData($benutzerFunktion)[0];
-					$oe = $this->_ci->OrganisationseinheitModel->load($benutzerFunktion->oe_kurzbz);
-					if (hasData($oe))
-						$oe = getData($oe)[0]->bezeichnung;
-				}
-
-				$personData = array(
-					'uid' => $benutzer->uid,
-					'firstname' => $benutzer->vorname,
-					'lastname' => $benutzer->nachname,
-					'titelpre' => $benutzer->titelpre,
-					'titelpost' => $benutzer->titelpost,
-					'personnelnumber' => $mitarbeiter->personalnummer,
-					'printdate' => date('d.m.Y'),
-					'birthdate' => date_format(date_create($benutzer->gebdatum), 'd.m.Y'),
-					'organisationunit' => $oe
-				);
-			}
-		}
-		elseif ($terminalType === self::STUDENT)
-		{
-
 			$this->_ci->StudentModel->addJoin('public.tbl_studiengang', 'studiengang_kz');
 			$student = $this->_ci->StudentModel->load(array('student_uid' => $benutzer->uid));
 
@@ -170,27 +144,22 @@ class Cards extends API_Controller
 
 			$studiensemester = getData($studiensemester)[0];
 
-			$beitrag = $this->_ci->KontoModel->checkStudienBeitrag($benutzer->uid, $studiensemester->studiensemester_kurzbz, implode("','" , $this->_ci->config->item('BUCHUNGSTYPEN')));
-
-			if (!hasData($beitrag))
-				$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Auslesen des Studienbeitrages. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
-
 			$personData = array(
 				'uid' => $benutzer->uid,
 				'firstname' => $benutzer->vorname,
-				'lastname' => $benutzer->nachname,
+				'lastname' => $benutzer->nachname . ($benutzer->titelpost != null ? ', ' . $benutzer->titelpost : ''),
 				'titelpre' => $benutzer->titelpre,
 				'titelpost' => $benutzer->titelpost,
 				'degreeprogram' => $student->kurzbzlang,
 				'birthdate' => date_format(date_create($benutzer->gebdatum), 'd.m.Y'),
-				'matriculationnumber' => rtrim($student->matrikelnr),
+				'matriculationnumber' => 'Pers.-Kz. ' .rtrim($student->matrikelnr),
 				'matr_nr' => $benutzer->matr_nr,
 				'printdate' => date('M.Y'),
 				'validto' => date_format(date_create($studiensemester->ende), 'd.m.Y')
 			);
-		}
 
-		$this->_ci->response(array('uid' => $uid, 'type' => $terminalType, 'personData' => json_encode($personData), 'error' => null), REST_Controller::HTTP_OK);
+			$this->_ci->response(array('uid' => $uid, 'type' => $terminalType, 'personData' => $personData, 'error' => null), REST_Controller::HTTP_OK);
+		}
 	}
 
 	public function getPersonPhoto()
@@ -255,7 +224,7 @@ class Cards extends API_Controller
 	public function postCardData()
 	{
 		$uid = $this->_ci->post('uid');
-		$cardData = $this->_ci->post('cardIndetifier');
+		$cardData = $this->_ci->post('cardIdentifier');
 
 		if (is_null($uid) || is_null($cardData))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehlerhafte Parameterübergabe'), REST_Controller::HTTP_OK);
@@ -283,14 +252,14 @@ class Cards extends API_Controller
 		if (isError($insert))
 			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Speichern des Betriebsmittels. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
 
-		$this->_ci->BetriebsmittelpersonModel->insert(
+		$insert = $this->_ci->BetriebsmittelpersonModel->insert(
 			array(
 				'betriebsmittel_id' => $insert->retval,
 				'person_id' => $person->person_id,
 				'insertamum' => date('Y-m-d H:i:s'),
 				'insertvon' => $this->_uid,
 				'ausgegebenam' => date('Y-m-d'),
-				'uid' => $this->_uid
+				'uid' => $uid
 			)
 		);
 

@@ -17,12 +17,12 @@
 
 <body>
 	<div class="container-fluid">
-		<div class="row">
+		<div class="row ">
 			<div class="col-lg-12">
 				<h3 class="page-header">Kartenverlängerung prüfen</h3>
 			</div>
 		</div>
-		<div class="row">
+		<div class="row form-group">
 			<div class="col-xs-4">
 				<input class="form-control" type="text" id="cardIdentifier" placeholder="Kartennummer" />
 			</div>
@@ -34,6 +34,22 @@
 			<div id="validationOutput" class="col-xs-12">
 			</div>
 		</div>
+		<hr />
+		<div class="row">
+			<div class="col-lg-12">
+				<h3 class="page-header">Zutrittskarte sperren</h3>
+			</div>
+		</div>
+		<div class="row form-group">
+			<div class="col-xs-4">
+				<input class="form-control" type="text" id="searchstudent" placeholder="Vorname/Nachname/UID"/>
+			</div>
+			<div class="col-xs-4">
+				<button id="showing" class="btn btn-default" disabled="disabled">Anzeigen</button>
+				<input type="hidden" class="hidden" id="uid"/>
+			</div>
+		</div>
+		<div class="row" id="cardOutput"></div>
 	</div>
 </body>
 

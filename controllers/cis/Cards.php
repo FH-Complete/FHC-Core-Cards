@@ -19,7 +19,10 @@ class Cards extends Auth_Controller
 	{
 		parent::__construct(array(
 			'cardValidation' => 'admin:rw',
+			'cardLocking' => 'admin:rw',
 			'getValidationData' => 'admin:rw',
+			'searchPerson' => 'admin:rw',
+			'getCards' => 'admin:rw',
 			'cardCreation' => 'extension/student_cards:rw',
 			'getQRCode' => 'extension/student_cards:rw',
 			'downloadQRCode' => 'extension/student_cards:rw'
@@ -29,13 +32,12 @@ class Cards extends Auth_Controller
 		$this->_ci =& get_instance();
 		$this->_ci->load->model('ressource/Betriebsmittelperson_model', 'BetriebsmittelpersonModel');
 		$this->_ci->load->model('person/Benutzer_model', 'BenutzerModel');
-		$this->_ci->load->model('person/Person_model', 'PersonModel');
 		$this->_ci->load->model('crm/Konto_model', 'KontoModel');
 		$this->_ci->load->model('crm/Student_model', 'StudentModel');
 		$this->_ci->load->model('organisation/Studiengang_model', 'StudiengangModel');
 		$this->_ci->load->model('extensions/FHC-Core-Cards/Card_model', 'CardModel');
+		$this->_ci->load->model('organisation/Studiensemester_model', 'StudiensemesterModel');
 
-		$this->_ci->load->library('FilesystemLib');
 		$this->_ci->load->library('DocumentLib');
 
 		$this->_ci->load->config('extensions/FHC-Core-Cards/cards');
@@ -76,17 +78,90 @@ class Cards extends Auth_Controller
 
 		$uid = getData($user)[0]->uid;
 
-		$studiengang = $this->_ci->KontoModel->getLastStudienbeitrag($uid, implode("','" , $this->_ci->config->item('BUCHUNGSTYPEN')));
+		$bezaehlteStudiengaenge = $this->_ci->KontoModel->getStudienbeitraege($uid, implode("','" , $this->_ci->config->item('BUCHUNGSTYPEN')));
 
-		if (isError($studiengang))
+		if (isError($bezaehlteStudiengaenge))
 			$this->terminateWithJsonError('Fehler beim Auslesen des Studienganges.');
 
-		if (!hasData($studiengang))
+		if (!hasData($bezaehlteStudiengaenge))
 			$this->terminateWithJsonError('Verlängerung der Karte ist derzeit nicht möglich da der Studienbeitrag noch nicht bezahlt wurde.');
 
-		$studiensemester_kurzbz = getData($studiengang)[0]->studiensemester_kurzbz;
+		$bezaehlteStudiengaenge = getData($bezaehlteStudiengaenge);
+		$lastStudienbeitrag = $bezaehlteStudiengaenge[0];
 
-		$this->outputJsonSuccess($studiensemester_kurzbz);
+		$aktSemester = $this->_ci->StudiensemesterModel->getAktOrNextSemester();
+
+		if (!hasData($aktSemester))
+			$this->_ci->response(array('validdate' => 'CUSTOMERROR', 'error' => 'Fehler beim Auslesen des Studienganges. Bitte wenden Sie sich an den Service Desk.'), REST_Controller::HTTP_OK);
+
+		$aktSemester = getData($aktSemester)[0];
+
+		if (in_array($aktSemester->studiensemester_kurzbz, array_column($bezaehlteStudiengaenge, 'studiensemester_kurzbz')))
+			$semester = $aktSemester->studiensemester_kurzbz;
+		else
+			$semester = $lastStudienbeitrag->studiensemester_kurzbz;
+
+		$this->outputJsonSuccess($semester);
+	}
+
+	public function cardLocking()
+	{
+		$betriebsmittel_id = $this->_ci->input->post('betriebsmittelid');
+		$anmerkung = $this->_ci->input->post('anmerkung');
+		$uid = $this->_ci->input->post('uid');
+
+		if (empty($betriebsmittel_id))
+			$this->terminateWithJsonError('Bitte eine Kartennummer angeben');
+
+		$betriebsmittel = $this->_ci->BetriebsmittelpersonModel->loadWhere(array('betriebsmittel_id' => $betriebsmittel_id));
+
+		if (isError($betriebsmittel))
+			$this->terminateWithJsonError(getError($betriebsmittel));
+
+		if (!hasData($betriebsmittel))
+			$this->terminateWithJsonError('Zutrittskarte nicht gefunden');
+
+		$betriebsmittel = getData($betriebsmittel)[0];
+
+		if ($betriebsmittel->uid === $uid)
+		{
+			$update = $this->_ci->BetriebsmittelpersonModel->update(
+				array
+				(
+					'betriebsmittel_id' => $betriebsmittel->betriebsmittel_id
+				),
+				array
+				(
+					'anmerkung' => $anmerkung,
+					'retouram' => date('Y-m-d'),
+					'updateamum' => date('Y-m-d H:i:s'),
+					'updatevon' => $this->_uid
+				)
+			);
+
+			if (isError($update))
+				$this->terminateWithJsonError(getError($update));
+
+			$this->outputJsonSuccess('Success');
+		}
+		else
+			$this->terminateWithJsonError('Fehler beim Sperren der Karte');
+	}
+
+	public function getCards()
+	{
+		$uid = $this->_ci->input->post('uid');
+
+		if (empty($uid))
+			$this->terminateWithJsonError('Bitte eine Person auswählen');
+
+		$this->_ci->BetriebsmittelpersonModel->addSelect('wawi.tbl_betriebsmittelperson.anmerkung, ausgegebenam, betriebsmittel_id, retouram');
+		$card = $this->_ci->BetriebsmittelpersonModel->getBetriebsmittelByUid($uid, 'Zutrittskarte');
+
+		if (!hasData($card))
+			$this->terminateWithJsonError('Die Person hat keine Zutrittskarte.');
+
+		$this->outputJsonSuccess(getData($card));
 	}
 
 	public function getQRCode()
@@ -106,14 +181,7 @@ class Cards extends Auth_Controller
 		if ($studiengangTyp !== 'm' && $studiengangTyp !== 'b')
 			$this->terminateWithJsonError('Sie sind nicht berechtigt.');
 
-		$person = $this->_ci->PersonModel->getByUid($this->_uid);
-
-		if (!hasData($person))
-			$this->terminateWithJsonError('Die Person kann nicht geladen werden.');
-
-		$person = getData($person)[0];
-
-		$cards = $this->_ci->BetriebsmittelpersonModel->getBetriebsmittel($person->person_id, 'Zutrittskarte', false);
+		$cards = $this->_ci->BetriebsmittelpersonModel->getBetriebsmittelByUid($this->_uid, 'Zutrittskarte');
 
 		if (hasData($cards))
 			$this->terminateWithJsonError('Sie haben bereits eine Zutrittskarte');
@@ -204,6 +272,18 @@ class Cards extends Auth_Controller
 			foreach ($files as $file)
 				unlink($file);
 		}
+	}
+
+	public function searchPerson()
+	{
+		$filter = mb_strtolower($this->_ci->input->get('term'));
+
+		$result = $this->_ci->StudentModel->searchStudent($filter);
+
+		if (isSuccess($result))
+			$this->outputJson($result->retval);
+		else
+			$this->outputJson(null);
 	}
 
 	/**
