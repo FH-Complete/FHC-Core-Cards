@@ -3,14 +3,16 @@ $this->load->view(
 	'templates/FHC-Header',
 	array(
 		'title' => 'Card-Terminal',
-		'jquery' => true,
-		'jqueryui' => true,
-		'bootstrap' => true,
-		'fontawesome' => true,
+
+		'jquery3' => true,
+		'jqueryui1' => true,
+		'bootstrap3' => true,
+		'fontawesome4' => true,
 		'tablewidget' => true,
-		'tabulator' => true,
+		'tabulator4' => true,
 		'ajaxlib' => true,
 		'dialoglib' => true,
+
 		'phrases' => array(
 			'ui' => array(
 				'global'
@@ -25,7 +27,7 @@ $this->load->view(
 	)
 );
 ?>
-<body>
+
 	<div id="wrapper">
 		<div id="page-wrapper">
 			<div class="container-fluid">
@@ -45,6 +47,6 @@ $this->load->view(
 			</div>
 		</div>
 	</div>
-</body>
+
 
 <?php $this->load->view('templates/FHC-Footer'); ?>

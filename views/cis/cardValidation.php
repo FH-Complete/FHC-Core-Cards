@@ -1,21 +1,21 @@
 <?php
-	$this->load->view(
-		'templates/FHC-Header',
-		array(
-			'title' => 'Cards',
-			'jquery' => true,
-			'jqueryui' => true,
-			'bootstrap' => true,
-			'fontawesome' => true,
-			'sbadmintemplate' => true,
-			'ajaxlib' => true,
-			'dialoglib' => true,
-			'customJSs' => array('public/extensions/FHC-Core-Cards/js/cards.js')
-		)
-	);
+$sitesettings = array(
+	'title' => 'Cards',
+	'jquery3' => true,
+	'jqueryui1' => true,
+	'bootstrap3' => true,
+	'fontawesome4' => true,
+	'sbadmintemplate3' => true,
+	'ajaxlib' => true,
+	'dialoglib' => true,
+	'customJSs' => array('public/extensions/FHC-Core-Cards/js/cards.js')
+);
+$this->load->view(
+	'templates/FHC-Header',
+	$sitesettings
+);
 ?>
 
-<body>
 	<div class="container-fluid">
 		<div class="row ">
 			<div class="col-lg-12">
@@ -51,6 +51,8 @@
 		</div>
 		<div class="row" id="cardOutput"></div>
 	</div>
-</body>
-
-
+<?php
+$this->load->view(
+	'templates/FHC-Footer',
+	$sitesettings
+);
