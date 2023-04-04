@@ -178,7 +178,7 @@ class Cards extends Auth_Controller
 
 		$studiengangTyp = getData($studiengang)[0]->typ;
 
-		if ($studiengangTyp !== 'm' && $studiengangTyp !== 'b')
+		if ($studiengangTyp !== 'm' && $studiengangTyp !== 'b' && !in_array($this->_uid, $this->_ci->config->item('USERS_WHITELIST')))
 			$this->terminateWithJsonError('Sie sind nicht berechtigt.');
 
 		$cards = $this->_ci->BetriebsmittelpersonModel->getBetriebsmittelByUid($this->_uid, 'Zutrittskarte');
